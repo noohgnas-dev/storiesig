@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-# -*- coding: utf​-8​ -*-
-import requests, urllib3
+# -*- coding: utf-8 -*-
+import requests, urllib3, json
 import os, re, argparse
 from tqdm import tqdm
 from sys import exit
@@ -14,11 +14,12 @@ class downloader(object):
     def __init__(self, username, storiesFlag):
         self.username = username
         self.storiesFlag = storiesFlag
-        self.api = 'https://storiesig.com'
-        self.storiesLink = self.api + '/stories/' + self.username
-        self.user = self.api + '?username=' + self.username
+        self.api = 'https://storiesig.info/api/ig'
+        self.user = self.api + '/userInfoByUsername/' + self.username
         self.root = requests.get(self.user, verify=False).text
-        self.sdname = self.username + "_{}".format(datetime.now().strftime("%m%d%Y-%H%M%S"))
+        self.sdname = self.username + "_{}".format(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+        profile = json.loads(self.root)
+        self.storiesLink = self.api + '/stories/' + profile["result"]["user"]["pk"]
 
         if self.exists():
             if not self.storiesFlag:
@@ -43,21 +44,40 @@ class downloader(object):
             os.rmdir(self.sdname)
             exit()
 
-        stories = []
+        links = []
         soup = BeautifulSoup(r, features="lxml")
-        links =  soup.findAll('a', attrs={'href': re.compile("^https://scontent")})
+        stories_dict = json.loads(r)
+        if len(stories_dict["result"]) < 1:
+            print("no story")
+            exit()
 
-        for link in links:
-            url = link.get('href')
-            stories.append(unescape(url))
+        with open("storiex.json", "w") as f:
+            f.write(r)
+
+        date_str = lambda s: datetime.fromtimestamp(s).strftime('%Y-%m-%d_%H%M%S')
+        if len(stories_dict["result"][0]):
+            for k in stories_dict["result"]:
+                # print(k)
+                if "video_versions" in k:
+                    links.append({"url": k["video_versions"][0]["url"],
+                                  "format": "mp4",
+                                  "expires": date_str(k["video_versions"][0]["url_signature"]["expires"])})
+                if "image_versions2" in k:
+                    links.append(
+                        {"url": k["image_versions2"]["candidates"][0]["url"],
+                         "format": "jpg",
+                         "expires": date_str(k["image_versions2"]["candidates"][0]["url_signature"]["expires"])})
 
         print('[*] Downloading last 24h stories...')
         try:
             for link in tqdm(links):
-                url = link.get('href')
-                r = requests.get(url, verify=False)
-                parser = urlparse(url)
-                filename = os.path.basename(parser.path)
+                r = requests.get(link["url"], verify=False)
+                parser = urlparse(link["url"])
+                filename = os.path.basename(os.path.basename(parser.path)
+                                            + "."
+                                            + link["expires"]
+                                            + "."
+                                            + link["format"])
 
                 with open(self.sdname + '/' + filename, 'wb') as f:
                     f.write(r.content)
