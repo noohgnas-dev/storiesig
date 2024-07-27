@@ -4,7 +4,6 @@ import requests, urllib3, json
 import os, re, argparse
 from tqdm import tqdm
 from sys import exit
-from html import unescape
 from bs4 import BeautifulSoup
 from datetime import datetime
 from urllib.parse import urlparse
@@ -17,7 +16,8 @@ class downloader(object):
         self.api = 'https://storiesig.info/api/ig'
         self.user = self.api + '/userInfoByUsername/' + self.username
         self.root = requests.get(self.user, verify=False).text
-        self.sdname = self.username + "_{}".format(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+        # self.sdname = self.username + "_{}".format(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+        self.sdname = "story/" + self.username
         profile = json.loads(self.root)
         self.storiesLink = self.api + '/stories/' + profile["result"]["user"]["pk"]
 
@@ -71,17 +71,17 @@ class downloader(object):
         print('[*] Downloading last 24h stories...')
         try:
             for link in tqdm(links):
-                r = requests.get(link["url"], verify=False)
                 parser = urlparse(link["url"])
-                filename = os.path.basename(os.path.basename(parser.path)
-                                            + "."
-                                            + link["expires"]
-                                            + "."
-                                            + link["format"])
+                file_path = self.sdname + '/' + os.path.basename(parser.path)
+                if not os.path.isfile(file_path):
+                    print(f"try to download: {file_path}")
+                    r = requests.get(link["url"], verify=False)
+                    with open(file_path, 'wb') as f:
+                        f.write(r.content)
+                        f.close()
+                else:
+                    print(f"already exist: {file_path}")
 
-                with open(self.sdname + '/' + filename, 'wb') as f:
-                    f.write(r.content)
-                    f.close()
         except KeyboardInterrupt:
             exit()
 
@@ -151,7 +151,8 @@ class downloader(object):
             else:
                 os.mkdir(self.username)
         else:
-            os.mkdir(self.sdname)
+            if not os.path.isdir(self.sdname):
+                os.makedirs(self.sdname, exist_ok=True)
 
 def main():
     urllib3.disable_warnings(InsecureRequestWarning)
