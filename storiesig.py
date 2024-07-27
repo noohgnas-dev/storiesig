@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from urllib.parse import urlparse
 from urllib3.exceptions import InsecureRequestWarning
+import time
+import yaml
 
 class downloader(object):
     def __init__(self, username, storiesFlag):
@@ -18,7 +20,12 @@ class downloader(object):
         self.root = requests.get(self.user, verify=False).text
         # self.sdname = self.username + "_{}".format(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         self.sdname = "story/" + self.username
-        profile = json.loads(self.root)
+        print(f"{self.username}")
+        try:
+            profile = json.loads(self.root)
+        except:
+            print("json load error")
+            return
         self.storiesLink = self.api + '/stories/' + profile["result"]["user"]["pk"]
 
         if self.exists():
@@ -42,14 +49,18 @@ class downloader(object):
         if 'No stories to show' in r:
             print("[*] User '{}' did not post any recent story/stories!".format(self.username))
             os.rmdir(self.sdname)
-            exit()
+            return
 
         links = []
-        soup = BeautifulSoup(r, features="lxml")
-        stories_dict = json.loads(r)
-        if len(stories_dict["result"]) < 1:
-            print("no story")
-            exit()
+        try:
+            soup = BeautifulSoup(r, features="lxml")
+            stories_dict = json.loads(r)
+            if len(stories_dict["result"]) < 1:
+                print("getStories is null")
+                return
+        except:
+            print("json load error")
+            return
 
         with open("storiex.json", "w") as f:
             f.write(r)
@@ -74,7 +85,7 @@ class downloader(object):
                 parser = urlparse(link["url"])
                 file_path = self.sdname + '/' + os.path.basename(parser.path)
                 if not os.path.isfile(file_path):
-                    print(f"try to download: {file_path}")
+                    # print(f"try to download: {file_path}")
                     r = requests.get(link["url"], verify=False)
                     with open(file_path, 'wb') as f:
                         f.write(r.content)
@@ -147,7 +158,7 @@ class downloader(object):
         if not self.storiesFlag:
             if os.path.isdir(self.username):
                 print("[*] Highlights for user '{}' are already downloaded!".format(self.username))
-                exit()
+                return
             else:
                 os.mkdir(self.username)
         else:
@@ -158,12 +169,22 @@ def main():
     urllib3.disable_warnings(InsecureRequestWarning)
     args = usage()
 
-    downloader(args.user, args.stories)
+    if args.list:
+        with open(args.list, 'r') as f:
+            users = yaml.load(f, Loader=yaml.FullLoader)
+
+        for u in users["users"]:
+            downloader(u, args.stories)
+            print("wait 5 min. to avoid ban")
+            time.sleep(300)  # 5 min. to avoid cloudflare ban
+    else:
+        downloader(args.user, args.stories)
 
 def usage():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-u','--user', nargs="?", help="Instagram username (required)", required=True)
+    parser.add_argument('-u', '--user', nargs="?", help="Instagram username (required)", required=True)
     parser.add_argument('-s', '--stories', dest="stories", action="store_true", help="Only download last 24h stories")
+    parser.add_argument('-l', '--list', nargs="?", help="Only download last 24h stories with list of file")
     return parser.parse_args()
 
 if __name__ == '__main__':
