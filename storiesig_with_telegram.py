@@ -16,6 +16,8 @@ from telegram import Bot
 
 
 CHAT_ID = 0  # TODO: input your chatting room id
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+USER_AGENT_HEADER = {'User-Agent': USER_AGENT}
 BOT_TOKEN = ""
 BOT_TOKEN_PATH = "./token.txt"
 if os.path.exists(BOT_TOKEN_PATH):
@@ -57,17 +59,20 @@ async def send_to_telegram(file_path, full_name):
 class downloader(object):
     profile = {}
     def __init__(self, username, storiesFlag):
+        global USER_AGENT_HEADER
         self.username = username
         self.storiesFlag = storiesFlag
         self.api = 'https://storiesig.info/api/ig'
         self.user = self.api + '/userInfoByUsername/' + self.username
-        self.root = requests.get(self.user, verify=False).text
+        self.root = requests.get(self.user, headers=USER_AGENT_HEADER, verify=False).text
         # self.sdname = self.username + "_{}".format(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         self.sdname = "story/" + self.username
         logging.info(f"{self.username}")
         try:
             self.profile = json.loads(self.root)
         except:
+            print(self.user)
+            print(self.root)
             logging.info("json load error")
             return
         self.storiesLink = self.api + '/stories/' + self.profile["result"]["user"]["pk"]
@@ -89,7 +94,9 @@ class downloader(object):
                 self.getStories()
 
     def getStories(self):
-        r = requests.get(self.storiesLink, verify=False).text
+        global USER_AGENT_HEADE
+
+        r = requests.get(self.storiesLink, headers=USER_AGENT_HEADER, verify=False).text
         if 'No stories to show' in r:
             logging.info("[*] User '{}' did not post any recent story/stories!".format(self.username))
             os.rmdir(self.sdname)
@@ -130,7 +137,7 @@ class downloader(object):
                 file_path = self.sdname + '/' + os.path.basename(parser.path)
                 if not os.path.isfile(file_path):
                     # print(f"try to download: {file_path}")
-                    r = requests.get(link["url"], verify=False)
+                    r = requests.get(link["url"], headers=USER_AGENT_HEADER, verify=False)
                     with open(file_path, 'wb') as f:
                         f.write(r.content)
                         f.close()
@@ -181,6 +188,7 @@ class downloader(object):
             return True
 
     def downloadHighlight(self, key, value):
+        global USER_AGENT_HEADER
         html = requests.get(key, verify=False).text
         od = self.username + '/' + value
         os.mkdir(od)
@@ -192,7 +200,7 @@ class downloader(object):
         try:
             for link in tqdm(links):
                 url = link.get('href')
-                r = requests.get(url, verify=False)
+                r = requests.get(url, headers=USER_AGENT_HEADER, verify=False)
                 parser = urlparse(url)
                 filename = os.path.basename(parser.path)
 
