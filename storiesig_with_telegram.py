@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import random
 import requests, urllib3, json
 import os, re, argparse
 from tqdm import tqdm
@@ -244,7 +245,7 @@ def main():
         for u in users["users"]:
             downloader(u, args.stories)
             logging.info("wait 5 min. to avoid ban")
-            time.sleep(300)  # 5 min. to avoid cloudflare ban
+            time.sleep(random.randrange(250, 350))  # 5 min. to avoid cloudflare ban
     else:
         downloader(args.user, args.stories)
 
