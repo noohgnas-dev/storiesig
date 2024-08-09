@@ -1,5 +1,6 @@
-#!/usr/bin/python3
+#!/home/nooh/stories/venv/bin/python
 # -*- coding: utf-8 -*-
+import random
 import requests, urllib3, json
 import os, re, argparse
 from tqdm import tqdm
@@ -15,15 +16,13 @@ import asyncio
 from telegram import Bot
 
 
-CHAT_ID = 0  # TODO: input your chatting room id
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 USER_AGENT_HEADER = {'User-Agent': USER_AGENT}
 BOT_TOKEN = ""
-BOT_TOKEN_PATH = "./token.txt"
-if os.path.exists(BOT_TOKEN_PATH):
-    with open(BOT_TOKEN_PATH) as f:
-        lines = f.readlines()
-        BOT_TOKEN = lines[0].strip()
+CHAT_ID = -1002177927732
+with open("./token.txt") as f:
+    lines = f.readlines()
+    BOT_TOKEN = lines[0].strip()
 
 
 logging.basicConfig(
@@ -66,6 +65,7 @@ async def send_to_telegram_with_msg(full_name, count):
 
 class downloader(object):
     profile = {}
+
     def __init__(self, username, storiesFlag):
         global USER_AGENT_HEADER
         self.username = username
@@ -84,6 +84,9 @@ class downloader(object):
             logging.info("json load error")
             return
         self.storiesLink = self.api + '/stories/' + self.profile["result"]["user"]["pk"]
+
+        with open("userInfoByUsername.json", "w") as f:
+            f.write(self.root)
 
         if self.exists():
             if not self.storiesFlag:
@@ -159,9 +162,6 @@ class downloader(object):
 
         except KeyboardInterrupt:
             exit()
-
-
-
 
     def getHighlights(self):
             hlarray = []
@@ -244,7 +244,7 @@ def main():
         for u in users["users"]:
             downloader(u, args.stories)
             logging.info("wait 5 min. to avoid ban")
-            time.sleep(300)  # 5 min. to avoid cloudflare ban
+            time.sleep(random.randrange(250, 350))  # 5 min. to avoid cloudflare ban
     else:
         downloader(args.user, args.stories)
 

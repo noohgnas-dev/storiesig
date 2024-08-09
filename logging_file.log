@@ -1,0 +1,41 @@
+2024-08-05 08:46:22  INFO:se._.mjx
+2024-08-05 08:46:22  INFO:json load error
+2024-08-05 08:46:22  INFO:wait 5 min. to avoid ban
+2024-08-05 08:48:08  INFO:se._.mjx
+2024-08-05 08:48:08  INFO:json load error
+2024-08-05 08:48:08  INFO:wait 5 min. to avoid ban
+2024-08-05 08:49:04  INFO:jx.0_iy
+2024-08-05 08:49:04  INFO:json load error
+2024-08-05 08:49:04  INFO:wait 5 min. to avoid ban
+2024-08-05 08:50:48  INFO:se._.mjx
+2024-08-05 08:50:52  INFO:[*] Downloading last 24h stories...
+2024-08-05 08:50:58  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendVideo "HTTP/1.1 200 OK"
+2024-08-05 08:50:58  INFO:send to telegram channel: story/se._.mjx/B44BD588C4E7A5CE71DDBB90A16271B5_video_dashinit.mp4
+2024-08-05 08:51:01  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendPhoto "HTTP/1.1 200 OK"
+2024-08-05 08:51:01  INFO:send to telegram channel: story/se._.mjx/454334387_411438588614601_6455080232026730827_n.jpg
+2024-08-05 08:51:05  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendVideo "HTTP/1.1 200 OK"
+2024-08-05 08:51:05  INFO:send to telegram channel: story/se._.mjx/D64220DE845D87519EA461B4F76FC8B9_video_dashinit.mp4
+2024-08-05 08:51:09  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendPhoto "HTTP/1.1 200 OK"
+2024-08-05 08:51:09  INFO:send to telegram channel: story/se._.mjx/454091696_1149713976315910_5844186747586750531_n.jpg
+2024-08-05 08:51:13  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendPhoto "HTTP/1.1 200 OK"
+2024-08-05 08:51:13  INFO:send to telegram channel: story/se._.mjx/454235550_3765633963692014_62285023388928999_n.jpg
+2024-08-05 08:51:20  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendVideo "HTTP/1.1 200 OK"
+2024-08-05 08:51:20  INFO:send to telegram channel: story/se._.mjx/59482D77364E15B3759EA9322DDBCD97_video_dashinit.mp4
+2024-08-05 08:51:24  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendPhoto "HTTP/1.1 200 OK"
+2024-08-05 08:51:24  INFO:send to telegram channel: story/se._.mjx/454197627_899708731991918_1730046485995078245_n.jpg
+2024-08-05 08:51:24  INFO:wait 5 min. to avoid ban
+2024-08-05 08:52:20  INFO:jx.0_iy
+2024-08-05 08:52:22  INFO:getStories is null
+2024-08-05 08:52:22  INFO:wait 5 min. to avoid ban
+2024-08-05 08:53:18  INFO:yslsm_215
+2024-08-05 08:53:19  INFO:[*] Downloading last 24h stories...
+2024-08-05 08:53:24  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendVideo "HTTP/1.1 200 OK"
+2024-08-05 08:53:24  INFO:send to telegram channel: story/yslsm_215/9D4ADF84C5AFE3A76C6B4946B83FC790_video_dashinit.mp4
+2024-08-05 08:53:28  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendPhoto "HTTP/1.1 200 OK"
+2024-08-05 08:53:28  INFO:send to telegram channel: story/yslsm_215/454030208_1567640543826261_6740818016166444325_n.jpg
+2024-08-05 08:53:33  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendVideo "HTTP/1.1 200 OK"
+2024-08-05 08:53:33  INFO:send to telegram channel: story/yslsm_215/124D0BF74CDDEF600408716C81F8D2AC_video_dashinit.mp4
+2024-08-05 08:53:37  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendPhoto "HTTP/1.1 200 OK"
+2024-08-05 08:53:37  INFO:send to telegram channel: story/yslsm_215/453653931_508234261568498_4171529022091544236_n.jpg
+2024-08-05 08:53:43  INFO:HTTP Request: POST https://api.telegram.org/bot7392205961:AAHl8U9jH6PECtBxvSllsjs_dKyRuwyYkmU/sendVideo "HTTP/1.1 200 OK"
+2024-08-05 08:53:43  INFO:send to telegram channel: story/yslsm_215/C14C69AF606C0BA8D355A7A4D6D48293_video_dashinit.mp4

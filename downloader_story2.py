@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/home/nooh/stories/venv/bin/python
 # -*- coding: utf-8 -*-
 import requests, urllib3, json
 import os, re, argparse
@@ -15,15 +15,13 @@ import asyncio
 from telegram import Bot
 
 
-CHAT_ID = 0  # TODO: input your chatting room id
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 USER_AGENT_HEADER = {'User-Agent': USER_AGENT}
 BOT_TOKEN = ""
-BOT_TOKEN_PATH = "./token.txt"
-if os.path.exists(BOT_TOKEN_PATH):
-    with open(BOT_TOKEN_PATH) as f:
-        lines = f.readlines()
-        BOT_TOKEN = lines[0].strip()
+CHAT_ID = -1002177927732
+with open("/home/nooh/stories/token.txt") as f:
+    lines = f.readlines()
+    BOT_TOKEN = lines[0].strip()
 
 
 logging.basicConfig(
@@ -36,8 +34,7 @@ logging.getLogger("requests").setLevel(logging.CRITICAL)
 logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 logging.getLogger("telegram").setLevel(logging.CRITICAL)
 
-
-async def send_to_telegram_with_file(file_path, full_name):
+async def send_to_telegram(file_path, full_name):
     bot = Bot(BOT_TOKEN)
     caption_str = f"{full_name} {datetime.today().strftime('%Y/%m/%d %H:%M:%S')}"
 
@@ -55,17 +52,9 @@ async def send_to_telegram_with_file(file_path, full_name):
         )
     logging.info(f"send to telegram channel: {file_path}")
 
-
-async def send_to_telegram_with_msg(full_name, count):
-    bot = Bot(BOT_TOKEN)
-    msg_str = f"{full_name} has {count} files at {datetime.today().strftime('%Y/%m/%d %H:%M:%S')}"
-
-    await bot.send_message(chat_id=CHAT_ID, text=msg_str)
-    logging.info(f"send to telegram channel: text = {msg_str}")
-
-
 class downloader(object):
     profile = {}
+
     def __init__(self, username, storiesFlag):
         global USER_AGENT_HEADER
         self.username = username
@@ -85,6 +74,9 @@ class downloader(object):
             return
         self.storiesLink = self.api + '/stories/' + self.profile["result"]["user"]["pk"]
 
+        with open("userInfoByUsername.json", "w") as f:
+            f.write(self.root)
+
         if self.exists():
             if not self.storiesFlag:
                 hld = self.getHighlights()
@@ -102,8 +94,7 @@ class downloader(object):
                 self.getStories()
 
     def getStories(self):
-        global USER_AGENT_HEADE
-
+        global USER_AGENT_HEADER
         r = requests.get(self.storiesLink, headers=USER_AGENT_HEADER, verify=False).text
         if 'No stories to show' in r:
             logging.info("[*] User '{}' did not post any recent story/stories!".format(self.username))
@@ -138,10 +129,8 @@ class downloader(object):
                          "format": "jpg",
                          "expires": date_str(k["image_versions2"]["candidates"][0]["url_signature"]["expires"])})
 
-        target_full_name = self.profile["result"]["user"]["full_name"]
-        logging.info(f'[*] Downloading last 24h stories of {target_full_name}')
+        logging.info('[*] Downloading last 24h stories...')
         try:
-            file_count = 0
             for link in tqdm(links):
                 parser = urlparse(link["url"])
                 file_path = self.sdname + '/' + os.path.basename(parser.path)
@@ -151,17 +140,12 @@ class downloader(object):
                     with open(file_path, 'wb') as f:
                         f.write(r.content)
                         f.close()
-                    asyncio.run(send_to_telegram_with_file(file_path, target_full_name))
-                    file_count = file_count + 1
+                    asyncio.run(send_to_telegram(file_path, self.profile["result"]["user"]["full_name"]))
                 else:
                     logging.info(f"already exist: {file_path}")
-            asyncio.run(send_to_telegram_with_msg(target_full_name, file_count))
 
         except KeyboardInterrupt:
             exit()
-
-
-
 
     def getHighlights(self):
             hlarray = []
