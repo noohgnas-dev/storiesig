@@ -1,0 +1,6 @@
+# 다운로드 대상 계정
+
+users:
+    - insta_id0  # name0
+    - insta_id1  # name1
+    - insta_id2  # name2

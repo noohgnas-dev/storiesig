@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import sys 
+import random
 import requests, urllib3, json
 import os, re, argparse
 from tqdm import tqdm
@@ -10,23 +12,83 @@ from urllib.parse import urlparse
 from urllib3.exceptions import InsecureRequestWarning
 import time
 import yaml
+import logging
+import asyncio
+from telegram import Bot
+
+
+CHAT_ID = 0  # TODO: input your chatting room id
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+USER_AGENT_HEADER = {'User-Agent': USER_AGENT}
+BOT_TOKEN = ""
+BOT_TOKEN_PATH = "./token.txt"
+if os.path.exists(BOT_TOKEN_PATH):
+    with open(BOT_TOKEN_PATH) as f:
+        lines = f.readlines()
+        BOT_TOKEN = lines[0].strip()
+
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)s:%(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %I:%M:%S ',
+    handlers=[logging.FileHandler("logging_file.log"), logging.StreamHandler(sys.stdout)]
+)
+logging.getLogger("requests").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
+logging.getLogger("telegram").setLevel(logging.CRITICAL)
+
+
+async def send_to_telegram_with_file(file_path, full_name):
+    bot = Bot(BOT_TOKEN)
+    caption_str = f"{full_name} {datetime.today().strftime('%Y/%m/%d %H:%M:%S')}"
+
+    if ".jpg" in file_path or ".heic" in file_path:
+        await bot.send_photo(
+            CHAT_ID,
+            photo=file_path,
+            caption=caption_str
+        )
+    elif ".mp4" in file_path:
+        await bot.send_video(
+            CHAT_ID,
+            video=file_path,
+            caption=caption_str
+        )
+    logging.info(f"send to telegram channel: {file_path}")
+
+
+async def send_to_telegram_with_msg(full_name, count):
+    bot = Bot(BOT_TOKEN)
+    msg_str = f"{full_name} has {count} files at {datetime.today().strftime('%Y/%m/%d %H:%M:%S')}"
+
+    await bot.send_message(chat_id=CHAT_ID, text=msg_str)
+    logging.info(f"send to telegram channel: text = {msg_str}")
+
 
 class downloader(object):
+    profile = {}
     def __init__(self, username, storiesFlag):
+        global USER_AGENT_HEADER
         self.username = username
         self.storiesFlag = storiesFlag
         self.api = 'https://storiesig.info/api/ig'
         self.user = self.api + '/userInfoByUsername/' + self.username
-        self.root = requests.get(self.user, verify=False).text
+        try:
+            self.root = requests.get(self.user, headers=USER_AGENT_HEADER, verify=False, timeout=20).text
+        except requests.exceptions.Timeout:
+            logging.info(f"Timed out: {self.user}")
         # self.sdname = self.username + "_{}".format(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         self.sdname = "story/" + self.username
-        print(f"{self.username}")
+        logging.info(f"{self.username}")
         try:
-            profile = json.loads(self.root)
+            self.profile = json.loads(self.root)
         except:
-            print("json load error")
+            print(self.user)
+            print(self.root)
+            logging.info("json load error")
             return
-        self.storiesLink = self.api + '/stories/' + profile["result"]["user"]["pk"]
+        self.storiesLink = self.api + '/stories/' + self.profile["result"]["user"]["pk"]
 
         if self.exists():
             if not self.storiesFlag:
@@ -39,15 +101,19 @@ class downloader(object):
                         self.downloadHighlight(key, value)
                         self.c += 1
                 else:
-                    print("[*] User '{}' does not appear to have any highlights!".format(self.username))
+                    logging.info("[*] User '{}' does not appear to have any highlights!".format(self.username))
             else:
                 self.validate()
                 self.getStories()
 
     def getStories(self):
-        r = requests.get(self.storiesLink, verify=False).text
+        global USER_AGENT_HEADE
+        try:
+            r = requests.get(self.storiesLink, headers=USER_AGENT_HEADER, verify=False, timeout=20).text
+        except requests.exceptions.Timeout:
+            logging.info(f"Timed out: {self.storiesLink}")
         if 'No stories to show' in r:
-            print("[*] User '{}' did not post any recent story/stories!".format(self.username))
+            logging.info("[*] User '{}' did not post any recent story/stories!".format(self.username))
             os.rmdir(self.sdname)
             return
 
@@ -56,10 +122,10 @@ class downloader(object):
             soup = BeautifulSoup(r, features="lxml")
             stories_dict = json.loads(r)
             if len(stories_dict["result"]) < 1:
-                print("getStories is null")
+                logging.info("getStories is null")
                 return
         except:
-            print("json load error")
+            logging.info("json load error")
             return
 
         with open("storiex.json", "w") as f:
@@ -79,22 +145,29 @@ class downloader(object):
                          "format": "jpg",
                          "expires": date_str(k["image_versions2"]["candidates"][0]["url_signature"]["expires"])})
 
-        print('[*] Downloading last 24h stories...')
+        target_full_name = self.profile["result"]["user"]["full_name"]
+        logging.info(f'[*] Downloading last 24h stories of {target_full_name}')
         try:
+            file_count = 0
             for link in tqdm(links):
                 parser = urlparse(link["url"])
                 file_path = self.sdname + '/' + os.path.basename(parser.path)
                 if not os.path.isfile(file_path):
                     # print(f"try to download: {file_path}")
-                    r = requests.get(link["url"], verify=False)
+                    r = requests.get(link["url"], headers=USER_AGENT_HEADER, verify=False, timeout=20)
                     with open(file_path, 'wb') as f:
                         f.write(r.content)
                         f.close()
+                    asyncio.run(send_to_telegram_with_file(file_path, target_full_name))
+                    file_count = file_count + 1
                 else:
-                    print(f"already exist: {file_path}")
+                    logging.info(f"already exist: {file_path}")
+            asyncio.run(send_to_telegram_with_msg(target_full_name, file_count))
 
         except KeyboardInterrupt:
             exit()
+        except requests.exceptions.Timeout:
+            logging.info(f"Timed out download file")
 
     def getHighlights(self):
             hlarray = []
@@ -124,15 +197,16 @@ class downloader(object):
 
     def exists(self):
         if "Sorry, this username isn't available." in self.root:
-            print("[*] User '{}' does not exist!".format(self.username))
+            logging.info("[*] User '{}' does not exist!".format(self.username))
             return False
         elif "This Account is Private" in self.root:
-            print("[*] Account '{}' is private!".format(self.username))
+            logging.info("[*] Account '{}' is private!".format(self.username))
             return False
         else:
             return True
 
     def downloadHighlight(self, key, value):
+        global USER_AGENT_HEADER
         html = requests.get(key, verify=False).text
         od = self.username + '/' + value
         os.mkdir(od)
@@ -140,11 +214,11 @@ class downloader(object):
 
         links =  soup.findAll('a', attrs={'href': re.compile("^https://scontent")})
         
-        print('[*] Downloading highlight {} of {}...'.format(self.c,self.t))
+        logging.info('[*] Downloading highlight {} of {}...'.format(self.c,self.t))
         try:
             for link in tqdm(links):
                 url = link.get('href')
-                r = requests.get(url, verify=False)
+                r = requests.get(url, headers=USER_AGENT_HEADER, verify=False)
                 parser = urlparse(url)
                 filename = os.path.basename(parser.path)
 
@@ -157,7 +231,7 @@ class downloader(object):
     def validate(self):
         if not self.storiesFlag:
             if os.path.isdir(self.username):
-                print("[*] Highlights for user '{}' are already downloaded!".format(self.username))
+                logging.info("[*] Highlights for user '{}' are already downloaded!".format(self.username))
                 return
             else:
                 os.mkdir(self.username)
@@ -175,8 +249,9 @@ def main():
 
         for u in users["users"]:
             downloader(u, args.stories)
-            print("wait 5 min. to avoid ban")
-            time.sleep(300)  # 5 min. to avoid cloudflare ban
+            wait_time = random.randrange(181, 241)
+            logging.info(f"wait {wait_time/60:.1} min. to avoid ban")
+            time.sleep(wait_time)
     else:
         downloader(args.user, args.stories)
 
