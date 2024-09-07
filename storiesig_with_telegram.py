@@ -24,15 +24,23 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-CHAT_ID = 0  # TODO: input your chatting room id
+
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 USER_AGENT_HEADER = {'User-Agent': USER_AGENT}
+
+BOT_INFO_FILE = ""  # XXX: make info file
 BOT_TOKEN = ""
-BOT_TOKEN_PATH = "./token.txt"
-if os.path.exists(BOT_TOKEN_PATH):
-    with open(BOT_TOKEN_PATH) as f:
-        lines = f.readlines()
-        BOT_TOKEN = lines[0].strip()
+CHAT_ID = 0
+
+if os.path.exists(BOT_INFO_FILE):
+    with open(BOT_INFO_FILE) as f:
+        j = json.loads(f.read())
+    BOT_TOKEN = j['token']
+    CHAT_ID = j['chat_id']
+else:
+    print(f"configuration file is not exist: {BOT_INFO_FILE}")
+    exit(1)
+
 REQ_TIMEOUT = 30
 CHROME_DRIVER = None
 
