@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import os
 import sys 
 import random
 import requests, urllib3, json
@@ -7,7 +8,7 @@ import os, re, argparse
 from tqdm import tqdm
 from sys import exit
 from bs4 import BeautifulSoup
-from datetime import datetime
+import datetime
 from urllib.parse import urlparse
 from urllib3.exceptions import InsecureRequestWarning
 import time
@@ -26,7 +27,7 @@ if os.path.exists(BOT_TOKEN_PATH):
     with open(BOT_TOKEN_PATH) as f:
         lines = f.readlines()
         BOT_TOKEN = lines[0].strip()
-
+REQ_TIMEOUT = 30
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)s:%(message)s',
@@ -41,33 +42,51 @@ logging.getLogger("telegram").setLevel(logging.CRITICAL)
 
 async def send_to_telegram_with_file(file_path, full_name):
     bot = Bot(BOT_TOKEN)
-    caption_str = f"{full_name} {datetime.today().strftime('%Y/%m/%d %H:%M:%S')}"
+    caption_str = f"{full_name} {datetime.datetime.today().strftime('%Y/%m/%d %H:%M:%S')}"
 
     if ".jpg" in file_path or ".heic" in file_path:
         await bot.send_photo(
             CHAT_ID,
             photo=file_path,
+            read_timeout=20,
+            write_timeout=20,
+            connect_timeout=20,
+            pool_timeout=5,
             caption=caption_str
         )
     elif ".mp4" in file_path:
         await bot.send_video(
             CHAT_ID,
             video=file_path,
+            read_timeout=20,
+            write_timeout=20,
+            connect_timeout=20,
+            pool_timeout=5,
             caption=caption_str
         )
     logging.info(f"send to telegram channel: {file_path}")
 
 
-async def send_to_telegram_with_msg(full_name, count):
+async def send_to_telegram_with_msg(msg, count):
     bot = Bot(BOT_TOKEN)
-    msg_str = f"{full_name} has {count} files at {datetime.today().strftime('%Y/%m/%d %H:%M:%S')}"
+    # msg_str = f"{full_name} has {count} files at {datetime.datetime.today().strftime('%Y/%m/%d %H:%M:%S')}"
+    msg_str = msg
 
     await bot.send_message(chat_id=CHAT_ID, text=msg_str)
     logging.info(f"send to telegram channel: text = {msg_str}")
 
 
+async def send_to_telegram_with_markdown_msg(msg):
+    bot = Bot(BOT_TOKEN)
+
+    await bot.send_message(chat_id=CHAT_ID, text=msg, parse_mode='MarkdownV2')
+    logging.info(f"send to telegram channel: text = {msg}")
+
+
 class downloader(object):
     profile = {}
+    file_count = 0
+
     def __init__(self, username, storiesFlag):
         global USER_AGENT_HEADER
         self.username = username
@@ -78,16 +97,22 @@ class downloader(object):
             self.root = requests.get(self.user, headers=USER_AGENT_HEADER, verify=False, timeout=20).text
         except requests.exceptions.Timeout:
             logging.info(f"Timed out: {self.user}")
-        # self.sdname = self.username + "_{}".format(datetime.now().strftime("%Y-%m-%d_%H%M%S"))
+        # self.sdname = self.username + "_{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S"))
         self.sdname = "story/" + self.username
-        logging.info(f"{self.username}")
         try:
             self.profile = json.loads(self.root)
-        except:
+        except Exception as e:
+            print(e)
             print(self.user)
             print(self.root)
-            logging.info("json load error")
+            logging.info(f"json load error: {self.user}")
+            tmp_msg = self.username + " may change to other id. Please look for in Instagram."
+            asyncio.run(send_to_telegram_with_msg(tmp_msg, 0))
+            self.profile = None
             return
+        full_name = self.profile['result']['user']['full_name'] if len(self.profile['result']['user']['full_name']) > 0 else f"{self.username}(empty)"
+        # logging.info(f"id: {self.username} - {self.profile['result']['user']['full_name']}")
+        logging.info(f"id: {self.username} - {full_name}")
         self.storiesLink = self.api + '/stories/' + self.profile["result"]["user"]["pk"]
 
         if self.exists():
@@ -112,6 +137,10 @@ class downloader(object):
             r = requests.get(self.storiesLink, headers=USER_AGENT_HEADER, verify=False, timeout=20).text
         except requests.exceptions.Timeout:
             logging.info(f"Timed out: {self.storiesLink}")
+        except Exception as e:
+            print(e)
+            return
+
         if 'No stories to show' in r:
             logging.info("[*] User '{}' did not post any recent story/stories!".format(self.username))
             os.rmdir(self.sdname)
@@ -124,14 +153,14 @@ class downloader(object):
             if len(stories_dict["result"]) < 1:
                 logging.info("getStories is null")
                 return
-        except:
-            logging.info("json load error")
+        except Exception as e:
+            print(e)
             return
 
         with open("storiex.json", "w") as f:
             f.write(r)
 
-        date_str = lambda s: datetime.fromtimestamp(s).strftime('%Y-%m-%d_%H%M%S')
+        date_str = lambda s: datetime.datetime.fromtimestamp(s).strftime('%Y-%m-%d_%H%M%S')
         if len(stories_dict["result"][0]):
             for k in stories_dict["result"]:
                 # print(k)
@@ -147,27 +176,29 @@ class downloader(object):
 
         target_full_name = self.profile["result"]["user"]["full_name"]
         logging.info(f'[*] Downloading last 24h stories of {target_full_name}')
+        self.file_count = 0
         try:
-            file_count = 0
             for link in tqdm(links):
                 parser = urlparse(link["url"])
                 file_path = self.sdname + '/' + os.path.basename(parser.path)
                 if not os.path.isfile(file_path):
                     # print(f"try to download: {file_path}")
-                    r = requests.get(link["url"], headers=USER_AGENT_HEADER, verify=False, timeout=20)
+                    r = requests.get(link["url"], headers=USER_AGENT_HEADER, verify=False, timeout=REQ_TIMEOUT)
                     with open(file_path, 'wb') as f:
                         f.write(r.content)
                         f.close()
                     asyncio.run(send_to_telegram_with_file(file_path, target_full_name))
-                    file_count = file_count + 1
+                    self.file_count = self.file_count + 1
                 else:
                     logging.info(f"already exist: {file_path}")
-            asyncio.run(send_to_telegram_with_msg(target_full_name, file_count))
 
         except KeyboardInterrupt:
             exit()
         except requests.exceptions.Timeout:
             logging.info(f"Timed out download file")
+        except Exception as e:
+            print(e)
+            return
 
     def getHighlights(self):
             hlarray = []
@@ -242,16 +273,38 @@ class downloader(object):
 def main():
     urllib3.disable_warnings(InsecureRequestWarning)
     args = usage()
+    download_task = None
+    targets = []
+    send_msg = ""
+    total_wait_time = 0
+    total_file_count = 0
 
     if args.list:
         with open(args.list, 'r') as f:
             users = yaml.load(f, Loader=yaml.FullLoader)
 
         for u in users["users"]:
-            downloader(u, args.stories)
-            wait_time = random.randrange(181, 241)
-            logging.info(f"wait {wait_time/60:.1} min. to avoid ban")
+            download_task = downloader(u, args.stories)
+            wait_time = random.randrange(5, 21)
+            total_wait_time = total_wait_time + wait_time
+            logging.info(f"wait {wait_time/60:0.1f} min. to avoid ban")
             time.sleep(wait_time)
+            if download_task.profile:
+                targets.append({"id": u, "fullname": download_task.profile['result']['user']['full_name'], "file_count": download_task.file_count})
+
+        for target in targets:
+            total_file_count = total_file_count + target["file_count"]
+            text_template = f"""
+||{target["fullname"]}||: {target["file_count"]}"""
+            send_msg = send_msg + text_template
+        now = datetime.datetime.now()
+        time_difference = datetime.timedelta(seconds=total_wait_time)
+        new_time = now - time_difference
+        send_msg = f"Collected at {new_time.strftime('%Y/%m/%d %H:%M:%S')}" + send_msg
+        if total_file_count == 0:
+            send_msg = f"Nothing at {new_time.strftime('%Y/%m/%d %H:%M:%S')}"
+        logging.info(send_msg)
+        asyncio.run(send_to_telegram_with_markdown_msg((send_msg)))
     else:
         downloader(args.user, args.stories)
 
