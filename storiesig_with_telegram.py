@@ -17,6 +17,12 @@ import logging
 import asyncio
 from telegram import Bot
 
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 CHAT_ID = 0  # TODO: input your chatting room id
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
@@ -28,6 +34,7 @@ if os.path.exists(BOT_TOKEN_PATH):
         lines = f.readlines()
         BOT_TOKEN = lines[0].strip()
 REQ_TIMEOUT = 30
+CHROME_DRIVER = None
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)s:%(message)s',
@@ -38,6 +45,17 @@ logging.basicConfig(
 logging.getLogger("requests").setLevel(logging.CRITICAL)
 logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 logging.getLogger("telegram").setLevel(logging.CRITICAL)
+
+
+def get_chrome_driver():
+    os.environ["DISPLAY"] = ":10.0"
+    chrome_service = Service(executable_path='/usr/bin/chromedriver')
+    chrome_options = Options()
+    chrome_options.add_experimental_option("detach", True)
+    chrome_options.add_argument("window-size=400,400")
+    chrome_options.add_experimental_option("excludeSwitches", ['enable-automation'])
+
+    return webdriver.Chrome(service=chrome_service, options=chrome_options)
 
 
 async def send_to_telegram_with_file(file_path, full_name):
@@ -88,13 +106,19 @@ class downloader(object):
     file_count = 0
 
     def __init__(self, username, storiesFlag):
-        global USER_AGENT_HEADER
+        global USER_AGENT_HEADER, CHROME_DRIVER
+
+        if not CHROME_DRIVER:
+            CHROME_DRIVER = get_chrome_driver()
+
         self.username = username
         self.storiesFlag = storiesFlag
         self.api = 'https://storiesig.info/api/ig'
         self.user = self.api + '/userInfoByUsername/' + self.username
         try:
-            self.root = requests.get(self.user, headers=USER_AGENT_HEADER, verify=False, timeout=20).text
+            CHROME_DRIVER.implicitly_wait(5)
+            CHROME_DRIVER.get(self.user)
+            self.root = CHROME_DRIVER.switch_to.active_element.text
         except requests.exceptions.Timeout:
             logging.info(f"Timed out: {self.user}")
         # self.sdname = self.username + "_{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S"))
@@ -132,9 +156,11 @@ class downloader(object):
                 self.getStories()
 
     def getStories(self):
-        global USER_AGENT_HEADE
+        global USER_AGENT_HEADER, REQ_TIMEOUT, CHROME_DRIVER
         try:
-            r = requests.get(self.storiesLink, headers=USER_AGENT_HEADER, verify=False, timeout=20).text
+            CHROME_DRIVER.implicitly_wait(5)
+            CHROME_DRIVER.get(self.storiesLink)
+            r = CHROME_DRIVER.switch_to.active_element.text
         except requests.exceptions.Timeout:
             logging.info(f"Timed out: {self.storiesLink}")
         except Exception as e:
@@ -193,6 +219,7 @@ class downloader(object):
                     logging.info(f"already exist: {file_path}")
 
         except KeyboardInterrupt:
+            CHROME_DRIVER.close()
             exit()
         except requests.exceptions.Timeout:
             logging.info(f"Timed out download file")
@@ -257,6 +284,7 @@ class downloader(object):
                     f.write(r.content)
                     f.close()
         except KeyboardInterrupt:
+            CHROME_DRIVER.close()
             exit()
 
     def validate(self):
@@ -307,6 +335,10 @@ def main():
         asyncio.run(send_to_telegram_with_markdown_msg((send_msg)))
     else:
         downloader(args.user, args.stories)
+
+    if CHROME_DRIVER:
+        print("close chrome")
+        CHROME_DRIVER.close()
 
 def usage():
     parser = argparse.ArgumentParser()

@@ -6,3 +6,4 @@ requests>=2.22.0
 
 PyYAML~=6.0.2rc1
 python-telegram-bot>=21.4
+selenium>=4.24.0
